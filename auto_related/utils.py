@@ -1,8 +1,6 @@
 from rest_framework.relations import (
     RelatedField,
     ManyRelatedField,
-    HyperlinkedIdentityField,
-    HyperlinkedRelatedField,
     PrimaryKeyRelatedField
 )
 from rest_framework.serializers import ModelSerializer, BaseSerializer, ListSerializer
