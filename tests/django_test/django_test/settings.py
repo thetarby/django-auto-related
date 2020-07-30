@@ -36,6 +36,7 @@ INTERNAL_IPS = [
 # Application definition
 
 INSTALLED_APPS = [
+    'rest_framework',
     'testerapp.apps.TesterappConfig',
     'django.contrib.admin',
     'django.contrib.auth',

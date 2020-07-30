@@ -13,3 +13,19 @@ class ChildChild(models.Model):
     text=models.TextField()
 
 
+
+
+class Teacher(models.Model):
+    text=models.TextField()
+    big_text_field=models.TextField(null=True)
+    teaches=models.ManyToManyField('Course')
+
+
+class Course(models.Model):
+    text=models.TextField()
+
+
+class Student(models.Model):
+    text=models.TextField()
+    courses=models.ManyToManyField('Course')
+    parent = models.OneToOneField(Parent, on_delete=models.SET_NULL, null=True)

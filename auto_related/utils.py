@@ -1,7 +1,8 @@
 from rest_framework.relations import (
     RelatedField,
     ManyRelatedField,
-    PrimaryKeyRelatedField
+    PrimaryKeyRelatedField,
+    HyperlinkedRelatedField
 )
 from rest_framework.serializers import ModelSerializer, BaseSerializer, ListSerializer
 from inspect import isclass
@@ -28,7 +29,7 @@ else:
 """
 import sys
 sys.path.insert(0, "../..")
-from auto_related.demo import *
+from auto_related.utils import *
 from testerapp.models import *
 from testerapp.serializers import *
 from django.db.models.fields.reverse_related import (
@@ -41,6 +42,12 @@ from auto_related.tracer import *
 patch_cursor()
 """
 
+"""
+NOTE:
+HyperlinkedIdentityFields' source is also * like SerializerMethodField. 
+Since HyperlinkedIdentityField uses field of the object itself it may not need optimization other than only() and defer()
+
+"""
 
 #gets django queryset as input and outputs if queryset is evaluated, that is, already hit the database
 def is_evaluated(queryset):
@@ -79,7 +86,13 @@ def get_related_fields(serializer):
 
 #TODO: When used with primarykeyrelated field it does not include source field or pk 
 #pk may be included but when accesing a models field pk is not listed there. So some changes are required to do that
-def get_all_sources(serializer):
+
+#TODO:HyperlinkedRelatedField uses pk as default but can access to other fields of a model with a different lookup_key parameter that requires a db hit.
+
+#NOTE: if output of this will be given to only or defer then reverse relations other than onetoone should be removed(django not supports it) and
+#primarykeyrelated and HyperlinkedRelatedField fields should be added. For now those fields are not included in result since they
+#only access pk of the object which does not require to fetch whole object. But only() needs them to work properly.
+def get_all_sources(serializer, include_pk=False):
     #if it is class get instance, if it is instance leave as is.
     serializer=serializer() if isclass(serializer) else serializer
     fields=serializer.child.fields if isinstance(serializer, ListSerializer) else serializer.fields
@@ -96,13 +109,14 @@ def get_all_sources(serializer):
 
         #This is a special case. Normally source of a primarykey related field is not used while serializing but pk value is used
         #hence no need to prefetch related model when using primary key related field
-        if isinstance(field,PrimaryKeyRelatedField):
+        if isinstance(field,PrimaryKeyRelatedField) and include_pk==False:
             continue
+
         res.append(source)
         if isinstance(field, (BaseSerializer, RelatedField, ManyRelatedField)): # or '.' in field.source
             if isinstance(field, BaseSerializer):
                 recursing=field.child if isinstance(field, ListSerializer) else field
-                res+=[source+'.'+each_source for each_source in get_all_sources(recursing)]
+                res+=[source+'.'+each_source for each_source in get_all_sources(recursing, include_pk)]
 
     return res
 

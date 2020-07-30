@@ -10,6 +10,7 @@ from rest_framework.fields import SerializerMethodField
 
 def trace_source(source, serializer):
     model=serializer.Meta.model
+    #TODO: no need to call this func every time. use it in class and cache it somehow instead
     fields=get_accessor(model)
 
     trace=[]
@@ -19,12 +20,14 @@ def trace_source(source, serializer):
         try:
             field = [f for f in fields if f['accessor']==each_field_name][0]
         except IndexError:
-            raise Exception('No such field')
+            raise Exception('No such field: {}'.format(each_field_name))
         
         trace.append(field)
         
         #TODO: does it support GenericForeignKeys ?
-        if not(isinstance(field['field'], ForeignObjectRel) or isinstance(field['field'],DjangoRelatedField)):
+        if not(isinstance(field['field'], ForeignObjectRel) or isinstance(field['field'], DjangoRelatedField)):
+            # if it is not a related or reverse related field than trail is done. Source should finish here as well
+            #if it does not it should give attribute error. Maybe it should be checked to see possible errors
             break
         else:
             fields=get_accessor(field['field'].related_model)
@@ -39,7 +42,9 @@ def get_accessor(model):
         if hasattr(f, 'get_accessor_name'):
             res.append({'field':f, 'accessor':f.get_accessor_name()})
         else:
-            res.append({'field':f, 'accessor':f.name})
+            #I am using f.name but django uses attname in its source code even though they look like the same thing 
+            #attname do not work. Found it attname is like child_id whereas name is like child. so attname is do not work for relations
+            res.append({'field':f, 'accessor':f.name}) 
     return res
 
 #from django docs: 
@@ -102,12 +107,13 @@ class Tracer:
         sources=get_all_sources(self.serializer)
         trails=[]
         for source in sources:
-            trails.append(Trail(Tracer.trace_source(source, self)))
+            trails.append(Trail(self.trace_source(source)))
+        self.trails=trails
         return trails 
     
     
-    @staticmethod
-    def trace_source(source, serializer):
+    def trace_source(self, source, include_reverse=True):
+        serializer=self.serializer
         model=serializer.Meta.model
         fields=get_accessor(model)
 
@@ -120,15 +126,35 @@ class Tracer:
             except IndexError:
                 raise Exception('No such field')
             
-            trace.append(field)
+            if include_reverse==False and isinstance(field['field'], ForeignObjectRel):
+                break
+            trace.append(field['field'])
             
             #TODO: does it support GenericForeignKeys ?
-            if not(isinstance(field['field'], ForeignObjectRel) or isinstance(field['field'],DjangoRelatedField)):
+            if not(isinstance(field['field'], ForeignObjectRel) or isinstance(field['field'], DjangoRelatedField)):
+                # if it is not a related or reverse related field than trail is done. Source should finish here as well
+                #if it does not it should give attribute error. Maybe it should be checked to see possible errors
                 break
             else:
                 fields=get_accessor(field['field'].related_model)
 
         return trace
+
+    #same as trace method but this do not include reverse related fields. It is useful to decide what to pass to only() since
+    #it does not support reverse relations
+    def eliminate_reverse(self):
+        sources=get_all_sources(self.serializer, include_pk=True)
+        trails=[]
+        for source in sources:
+            t=self.trace_source(source, include_reverse=False)
+            if len(t)==0: continue
+            trails.append(Trail(t))
+        return trails 
+
+    #method that returns what to pass to only()
+    def build_only(self):
+        trails=self.eliminate_reverse()
+        return [trail.get_as_source().replace('.','__') for trail in trails]
 
 
 class Trail:
@@ -137,12 +163,13 @@ class Trail:
     Trail is a list of django field instance and its accessors as string pair such as
     [{'field':field_instance, 'accessor':'parent'}, {'field':field_instance, 'accessor':'child_set'}]
 
-    It is generated when a tracer is applied to a serializer. Trail is the list of visited related models when a source
-    is tried to be accessed. For example if from model Parent, we want to access child's toys' we would do this;
+    It is generated when a tracer is applied to a serializer. Trail is the list of visited django field instances of related models 
+    when a source is tried to be accessed. For example if from model Parent, we want to access child's toys' we would do this;
 
     Parent.child.toys
 
-    Here we visit Parent Child and Toy models hence we need to prefetch all of them. Trail helps us to decide what to prefetch.
+    Here we visit Parent, Child and Toy models hence we need to prefetch all of them. Trail helps us to decide what to prefetch or select
+    by examining visited fields. A onetoone field leads to select_related while a manytomany or reverse_related fields requires prefetch_related
     """
     def __init__(self, fields):
         self.fields=fields
@@ -155,12 +182,20 @@ class Trail:
         if hasattr(field, 'get_accessor_name'):
             return field.get_accessor_name()
         else:
+            #NOTE: there is also field.attname. It might be more appropriate 
             return field.name
     
 
     def __getitem__(self, key):
+        if isinstance(key, slice):
+            indices = range(*key.indices(len(self.fields)))
+            return [{'field':self.fields[i], 'accessor': Trail.get_accessor(self.fields[i])} for i in indices]
         return {'field':self.fields[key], 'accessor': Trail.get_accessor(self.fields[key])}
     
-
-    def get_as_source(self):
-        return ".".join([Trail.get_accessor(f) for f in self.fields])
+    
+    def __repr__(self):
+        return str(self.fields)
+    
+    
+    def get_as_source(self, seperator='.'):
+        return seperator.join([Trail.get_accessor(f) for f in self.fields])
