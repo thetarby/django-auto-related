@@ -26,25 +26,8 @@ For development in addition to above:
 
 
 ### Installation
-Use the package manager [pip](https://pip.pypa.io/en/stable/) to install AutoRelated.
-Dillinger requires [Node.js](https://nodejs.org/) v4+ to run.
 
-Install the dependencies and devDependencies and start the server.
-
-```sh
-$ pip install autorelated
-```
-
-For production environments...
-
-```sh
-$ cd yourprojectfolder
-$ git clone autorelated
-```
-
-```python
-from autorelated.tracer import Tracer 
-```
+For now only git clone will work.
 
 ## Usage
 
