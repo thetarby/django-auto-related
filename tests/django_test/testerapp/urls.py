@@ -4,7 +4,7 @@ from rest_framework import generics
 from testerapp.models import *
 
 urlpatterns=[
-    path('parent', ParentList.as_view()),
+    path('parent', ParentList.as_view(), name='parent'),
     path('parent/<slug>', ParentList.as_view()),
 
     path('teacher', TeacherList.as_view()),

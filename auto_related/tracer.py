@@ -11,7 +11,7 @@ from rest_framework.fields import SerializerMethodField
 def trace_source(source, serializer):
     model=serializer.Meta.model
     #TODO: no need to call this func every time. use it in class and cache it somehow instead
-    fields=get_accessor(model)
+    fields=get_model_accessors(model)
 
     trace=[]
     source=source.split('.')
@@ -30,12 +30,17 @@ def trace_source(source, serializer):
             #if it does not it should give attribute error. Maybe it should be checked to see possible errors
             break
         else:
-            fields=get_accessor(field['field'].related_model)
+            fields=get_model_accessors(field['field'].related_model)
 
     return trace
 
 
-def get_accessor(model):
+def get_model_accessors(model):
+    """
+        given django model instance it returns all of its fields with its accessor(just like trail object below)
+        including related and reverse related fields like;
+        [{'field':field_instance, 'accessor':'parent'}, {'field':field_instance, 'accessor':'child_set'}]
+    """
     res=[]
     for f in model._meta.get_fields():
         #ForeignObjectRel instances have this attribute. returns default name like 'parent_set' or related_name if it is set 
@@ -51,8 +56,9 @@ def get_accessor(model):
 #You can refer to any ForeignKey or OneToOneField relation in the list of fields passed to select_related().
 #You can also refer to the reverse direction of a OneToOneField
 
-#returns 0 for nothing 1 for select and 2 for prefetch
-def select_or_prefetch(trace):
+#given a trail(trace) it returns select_related and prefetch_related for that trail. It works for only one trail. 
+#It should be applied to all sources of a serializer and resulting sets should be added. 
+def select_and_prefetch(trace):
     select=[]
     prefetch=[]
     for i,field in enumerate(trace):
@@ -71,6 +77,7 @@ def select_or_prefetch(trace):
     return "__".join(select), "__".join(prefetch)
 
 
+#same as below but without classes
 def optimized_queryset(serializer):
     traces=[]
     for s in get_all_sources(serializer):
@@ -79,7 +86,22 @@ def optimized_queryset(serializer):
     select=set()
     prefetch=set()
     for trace in traces:
-        s,p=select_or_prefetch(trace)
+        s,p=select_and_prefetch(trace)
+        select.add(s)
+        prefetch.add(p)
+    
+    select.discard(''), prefetch.discard('')
+
+    return select, prefetch
+
+
+#given trails returned from Tracer.update method 
+#returns two sets first of which is arguments for select_related and second one is arguments to pass to prefetch_related 
+def optimized_queryset_given_trails(trails):
+    select=set()
+    prefetch=set()
+    for trail in trails:
+        s,p=select_and_prefetch(trail)
         select.add(s)
         prefetch.add(p)
     
@@ -115,7 +137,8 @@ class Tracer:
     def trace_source(self, source, include_reverse=True):
         serializer=self.serializer
         model=serializer.Meta.model
-        fields=get_accessor(model)
+        #TODO: no need to call this func every time. save it somehow instead
+        fields=get_model_accessors(model)
 
         trace=[]
         source=source.split('.')
@@ -136,7 +159,7 @@ class Tracer:
                 #if it does not it should give attribute error. Maybe it should be checked to see possible errors
                 break
             else:
-                fields=get_accessor(field['field'].related_model)
+                fields=get_model_accessors(field['field'].related_model)
 
         return trace
 

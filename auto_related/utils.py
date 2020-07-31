@@ -14,17 +14,6 @@ from django.db.models.fields.related import (
     RelatedField as DjangoRelatedField, ForeignKey, OneToOneField
 )
 
-"""
-logic:
-
-if is_evaluated(qs):
-    for each field:
-        is_related_field_cached(qs[0], field)
-    
-    prefetch_uncached
-else:
-    build(get_related_fields(serializer))
-"""
 
 """
 import sys
@@ -41,6 +30,7 @@ from django.db.models.fields.related import (
 from auto_related.tracer import *
 patch_cursor()
 """
+
 
 """
 NOTE:
@@ -119,26 +109,6 @@ def get_all_sources(serializer, include_pk=False):
                 res+=[source+'.'+each_source for each_source in get_all_sources(recursing, include_pk)]
 
     return res
-
-
-def build(related_fields):
-    """
-    related_fields: output of the get related fields
-    return value: list of related sources
-    """
-    return build_helper(related_fields, '', set())
-
-
-def build_helper(childs, prepend, res):
-    for field in childs:
-        res.add(prepend+field['field'].source)
-        build_helper(field['childs'], prepend+field['field'].source+'__', res)
-    return res 
-
-
-def setup_query(serializer):
-    fields=get_related_fields(serializer)
-    return list(build(fields))
 
 
 #TODO: model instance can be manually created.It might be problematic

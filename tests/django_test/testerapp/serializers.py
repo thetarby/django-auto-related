@@ -20,6 +20,12 @@ class ChildSerializer(ModelSerializer):
 
 class ParentSerializer(ModelSerializer):
     child=ChildSerializer()
+    slug_related_childchild_text=serializers.SlugRelatedField(
+        read_only=True,
+        slug_field='text',
+        source='child.child'
+     )
+    string_related_child = serializers.StringRelatedField(source='child')
     class Meta:
         model = Parent
         fields = '__all__'
@@ -28,7 +34,12 @@ class ParentSerializer(ModelSerializer):
 
 class ChildChildSerializer2(ModelSerializer):
     parents=ChildSerializer(many=True)
-
+    slug_related_parents=serializers.SlugRelatedField(
+        many=True,
+        read_only=True,
+        slug_field='text',
+        source='parents'
+     )
     class Meta:
         model = ChildChild
         fields = '__all__'

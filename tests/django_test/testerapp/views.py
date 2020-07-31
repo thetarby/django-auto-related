@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view,parser_classes
 from rest_framework.parsers import FormParser, MultiPartParser, JSONParser
 
-from testerapp.views import *
+
 from testerapp.models import *
 from testerapp.serializers import *
 
@@ -31,9 +31,9 @@ class CustomListView(generics.ListAPIView):
 class ParentList(CustomListView):
     serializer_class = ParentSerializer
     def get_queryset(self):
-        s,p=optimized_queryset(ParentSerializer)
         t=Tracer(ParentSerializer())
-        t.trace()
+        traces=t.trace()
+        s,p=optimized_queryset_given_trails(traces)
 
         return Parent.objects.select_related(*s).prefetch_related(*p).only(*t.build_only())
 
@@ -41,9 +41,9 @@ class ParentList(CustomListView):
 class TeacherList(CustomListView):
     serializer_class = TeacherSerializer
     def get_queryset(self):
-        s,p=optimized_queryset(TeacherSerializer)
         t=Tracer(TeacherSerializer())
-        t.trace()
+        traces=t.trace()
+        s,p=optimized_queryset_given_trails(traces)
 
         return Teacher.objects.select_related(*s).prefetch_related(*p).only(*t.build_only())
 
@@ -51,9 +51,9 @@ class TeacherList(CustomListView):
 class StudentList(CustomListView):
     serializer_class = StudentSerializer
     def get_queryset(self):
-        s,p=optimized_queryset(StudentSerializer)
         t=Tracer(StudentSerializer())
-        t.trace()
+        traces=t.trace()
+        s,p=optimized_queryset_given_trails(traces)
 
         return Student.objects.select_related(*s).prefetch_related(*p).only(*t.build_only())
 
@@ -61,18 +61,17 @@ class StudentList(CustomListView):
 class CourseList(CustomListView):
     serializer_class = CourseSerializer2
     def get_queryset(self):
-        s,p=optimized_queryset(CourseSerializer2)
         t=Tracer(CourseSerializer2())
-        t.trace()
-        print(s, p)
+        traces=t.trace()
+        s,p=optimized_queryset_given_trails(traces)
         return Course.objects.select_related(*s).prefetch_related(*p).only(*t.build_only())
 
 
 class ChildChildList(CustomListView):
     serializer_class = ChildChildSerializer2
     def get_queryset(self):
-        s,p=optimized_queryset(ChildChildSerializer2)
         t=Tracer(ChildChildSerializer2())
-        t.trace()
+        traces=t.trace()
+        s,p=optimized_queryset_given_trails(traces)
 
         return ChildChild.objects.select_related(*s).prefetch_related(*p).only(*t.build_only())
