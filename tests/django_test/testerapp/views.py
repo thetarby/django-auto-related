@@ -15,6 +15,7 @@ sys.path.insert(0,'C:\\Users\\heymannn\\Desktop\\components\\auto_related')
 
 from auto_related.tracer import *
 from auto_related.utils import *
+from auto_related.mixin import *
 # Create your views here.
 class CustomListView(generics.ListAPIView):
     #a custom base view to support old urls and behaviours .../1 and .../all works as nothing is changed
@@ -38,15 +39,18 @@ class ParentList(CustomListView):
         return Parent.objects.select_related(*s).prefetch_related(*p).only(*t.build_only())
 
 
-class TeacherList(CustomListView):
+class TeacherList(ViewMixin,CustomListView):
     serializer_class = TeacherSerializer
+    #extra prefetches caused by serializermethodfield can be set here. Mixin will populate the queryset for others.
+    queryset=Teacher.objects.prefetch_related('teaches__student_set').all()
+    """
     def get_queryset(self):
         t=Tracer(TeacherSerializer())
         traces=t.trace()
         s,p=optimized_queryset_given_trails(traces)
 
         return Teacher.objects.select_related(*s).prefetch_related(*p).only(*t.build_only())
-
+    """
 
 class StudentList(CustomListView):
     serializer_class = StudentSerializer
@@ -58,13 +62,9 @@ class StudentList(CustomListView):
         return Student.objects.select_related(*s).prefetch_related(*p).only(*t.build_only())
 
 
-class CourseList(CustomListView):
+class CourseList(ViewMixin,CustomListView):
     serializer_class = CourseSerializer2
-    def get_queryset(self):
-        t=Tracer(CourseSerializer2())
-        traces=t.trace()
-        s,p=optimized_queryset_given_trails(traces)
-        return Course.objects.select_related(*s).prefetch_related(*p).only(*t.build_only())
+    queryset=Course.objects.all()
 
 
 class ChildChildList(CustomListView):

@@ -1,11 +1,11 @@
 # AutoRelated
-AutoRelated package automatically creates correct use of `select_related()`, `prefetch_related()` and `only()` methods of django for django-rest serializers.
+AutoRelated package automatically creates correct use of `select_related()`, `prefetch_related()` and `only()` methods of django for django-rest serializers. 
 
   - Pass your serializer to Tracer object
   - Build your query with the returned parameters
   - Your query is optimized
 
-
+Note that a SerializerMethodField which causes n+1 problem cannot be solved by AutoRelated since inspecting what is happening in a method field is really hard. To solve it you can still pass extra arguments to select or prefetch_related in queryset attribute of class based views.
 
 ### Requirements
 
@@ -26,7 +26,6 @@ For development in addition to above:
 
 
 ### Installation
-
 For now only git clone will work.
 
 ## Usage
@@ -45,7 +44,7 @@ class SomeSerializer(serializer.Serializers):
 
 You can use it in your views like this;
 ```python
-from autorelated.tracer import Trace, optimized_queryset_given_trails
+from auto_related.tracer import Trace, optimized_queryset_given_trails
 from rest_framework import status,generics
 
 class ParentList(generics.ListAPIView):
@@ -58,6 +57,24 @@ class ParentList(generics.ListAPIView):
                                             .prefetch_related(*p)\
                                             .only(*t.build_only())
 
+```
+
+Or you can use mixins that basically do the same thing
+
+```python
+from auto_related.mixin import ViewMixin, ViewMixinWithOnlyOptim
+from rest_framework import status,generics
+
+#this mixin does not use only() and defer() optimization
+class ParentList(ViewMixin, generics.ListAPIView):
+    serializer_class = SomeSerializer
+    # you can pass extra parameters here for SerializerMethodFields
+    queryset=Parent.objects.all() 
+
+#this mixin uses only() and defer() optimization
+class ParentList(ViewMixinWithOnlyOptim, generics.ListAPIView):
+    serializer_class = SomeSerializer
+    queryset=Parent.objects.all()
 ```
 
 ### How It Works
@@ -101,7 +118,7 @@ Django toolbar is installed in the project so that you can examine how many quer
  - Writing Tests
  - Performance improvements by caching some functions which are called with same parameters many times
  - Examining queryset or model instances passed to serializers to check if they are cached and properly configured and if not optimize them automatically.
-
+ - AutoRelated does not work with serializers which has SerializerMethodField which causes n+1 problem. That problem might be solved by overriding or patching queryset classes within method field. 
 License
 ----
 

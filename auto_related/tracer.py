@@ -8,49 +8,6 @@ from django.db.models.fields.related import (
 from django.utils.translation import gettext_lazy as _
 from rest_framework.fields import SerializerMethodField
 
-def trace_source(source, serializer):
-    model=serializer.Meta.model
-    #TODO: no need to call this func every time. use it in class and cache it somehow instead
-    fields=get_model_accessors(model)
-
-    trace=[]
-    source=source.split('.')
-    for each_field_name in source:
-        #find field by its name in fields
-        try:
-            field = [f for f in fields if f['accessor']==each_field_name][0]
-        except IndexError:
-            raise Exception('No such field: {}'.format(each_field_name))
-        
-        trace.append(field)
-        
-        #TODO: does it support GenericForeignKeys ?
-        if not(isinstance(field['field'], ForeignObjectRel) or isinstance(field['field'], DjangoRelatedField)):
-            # if it is not a related or reverse related field than trail is done. Source should finish here as well
-            #if it does not it should give attribute error. Maybe it should be checked to see possible errors
-            break
-        else:
-            fields=get_model_accessors(field['field'].related_model)
-
-    return trace
-
-
-def get_model_accessors(model):
-    """
-        given django model instance it returns all of its fields with its accessor(just like trail object below)
-        including related and reverse related fields like;
-        [{'field':field_instance, 'accessor':'parent'}, {'field':field_instance, 'accessor':'child_set'}]
-    """
-    res=[]
-    for f in model._meta.get_fields():
-        #ForeignObjectRel instances have this attribute. returns default name like 'parent_set' or related_name if it is set 
-        if hasattr(f, 'get_accessor_name'):
-            res.append({'field':f, 'accessor':f.get_accessor_name()})
-        else:
-            #I am using f.name but django uses attname in its source code even though they look like the same thing 
-            #attname do not work. Found it attname is like child_id whereas name is like child. so attname is do not work for relations
-            res.append({'field':f, 'accessor':f.name}) 
-    return res
 
 #from django docs: 
 #You can refer to any ForeignKey or OneToOneField relation in the list of fields passed to select_related().
@@ -222,3 +179,49 @@ class Trail:
     
     def get_as_source(self, seperator='.'):
         return seperator.join([Trail.get_accessor(f) for f in self.fields])
+
+
+#this function does the same thing with Trace class without classes
+def trace_source(source, serializer):
+    model=serializer.Meta.model
+    #TODO: no need to call this func every time. use it in class and cache it somehow instead
+    fields=get_model_accessors(model)
+
+    trace=[]
+    source=source.split('.')
+    for each_field_name in source:
+        #find field by its name in fields
+        try:
+            field = [f for f in fields if f['accessor']==each_field_name][0]
+        except IndexError:
+            raise Exception('No such field: {}'.format(each_field_name))
+        
+        trace.append(field)
+        
+        #TODO: does it support GenericForeignKeys ?
+        if not(isinstance(field['field'], ForeignObjectRel) or isinstance(field['field'], DjangoRelatedField)):
+            # if it is not a related or reverse related field than trail is done. Source should finish here as well
+            #if it does not it should give attribute error. Maybe it should be checked to see possible errors
+            break
+        else:
+            fields=get_model_accessors(field['field'].related_model)
+
+    return trace
+
+
+def get_model_accessors(model):
+    """
+        given django model instance it returns all of its fields with its accessor(just like trail object below)
+        including related and reverse related fields like;
+        [{'field':field_instance, 'accessor':'parent'}, {'field':field_instance, 'accessor':'child_set'}]
+    """
+    res=[]
+    for f in model._meta.get_fields():
+        #ForeignObjectRel instances have this attribute. returns default name like 'parent_set' or related_name if it is set 
+        if hasattr(f, 'get_accessor_name'):
+            res.append({'field':f, 'accessor':f.get_accessor_name()})
+        else:
+            #I am using f.name but django uses attname in its source code even though they look like the same thing 
+            #attname do not work. Found it attname is like child_id whereas name is like child. so attname is do not work for relations
+            res.append({'field':f, 'accessor':f.name}) 
+    return res

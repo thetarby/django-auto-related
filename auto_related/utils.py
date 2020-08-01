@@ -16,62 +16,11 @@ from django.db.models.fields.related import (
 
 
 """
-import sys
-sys.path.insert(0, "../..")
-from auto_related.utils import *
-from testerapp.models import *
-from testerapp.serializers import *
-from django.db.models.fields.reverse_related import (
-    ForeignObjectRel, ManyToManyRel, ManyToOneRel, OneToOneRel,
-)
-from django.db.models.fields.related import (
-    RelatedField as DjangoRelatedField
-)
-from auto_related.tracer import *
-patch_cursor()
-"""
-
-
-"""
 NOTE:
 HyperlinkedIdentityFields' source is also * like SerializerMethodField. 
 Since HyperlinkedIdentityField uses field of the object itself it may not need optimization other than only() and defer()
 
 """
-
-#gets django queryset as input and outputs if queryset is evaluated, that is, already hit the database
-def is_evaluated(queryset):
-    """
-    if it is a select query than when it is evaluated this attribure is set.
-    but for queries using count, delete, update etc this probably do not work
-    """
-    return queryset._result_cache is not None
-
-
-def get_related_fields(serializer):
-    """
-    serializer:django rest serializer instance
-
-    return value:list of fields that requires a select related or prefetch related
-    """
-    #if it is class get instance, if it is instance leave as is.
-    serializer=serializer() if isclass(serializer) else serializer
-
-    #if it is a list serializer fields are in child attribute
-    fields=serializer.child.fields if isinstance(serializer, ListSerializer) else serializer.fields
-    #fields=serializer._declared_fields this version uses class definition hence do not include source info of the fields
-    
-    res=[]
-    for key in fields:
-        field=fields[key]
-        if isinstance(field, (BaseSerializer, RelatedField, ManyRelatedField)): # or '.' in field.source
-            if isinstance(field, BaseSerializer):
-                recursing=field.child if isinstance(field, ListSerializer) else field
-                res.append({ 'field' : field, "childs": get_related_fields(recursing)})
-            else:
-                res.append({'field':field, "childs":[]})
-
-    return res
 
 
 #TODO: When used with primarykeyrelated field it does not include source field or pk 
@@ -111,6 +60,20 @@ def get_all_sources(serializer, include_pk=False):
     return res
 
 
+"""
+Below code is util functions for django's cache logic. For now they are not used.
+
+"""
+
+#gets django queryset as input and outputs if queryset is evaluated, that is, already hit the database
+def is_evaluated(queryset):
+    """
+    if it is a select query than when it is evaluated this attribure is set.
+    but for queries using count, delete, update etc this probably do not work
+    """
+    return queryset._result_cache is not None
+
+
 #TODO: model instance can be manually created.It might be problematic
 def not_cached_relation_fields(model_instance):
     """
@@ -131,7 +94,6 @@ def not_cached_relation_fields(model_instance):
         else:
             res.append(field)
     return res
-
 
 
 def is_related_field_cached(model_instance, field):
@@ -158,20 +120,24 @@ def is_related_field_cached(model_instance, field):
         raise Exception("Model instance has no such related field")
 
 
-def are_nested_fields_cached(model_instance, fields):
-    return not(False in [is_nested_field_cached(model_instance, field) for field in fields])
+def are_nested_fields_cached(qs_or_model, fields):
+    """
+    qs_or_model: it could be either a queryset instance or a model instance
+    fields: list of strings representing sources to be accessed on qs_or_model such as ['field', 'related_field.field', ...]
 
-
-def are_nested_fields_cached2(qs_or_model, fields):
-     if isinstance(qs_or_model, models.query.QuerySet):
+    returns: True if all fields are cached and no db hit is required to access sources and False otherwise 
+    """
+    if isinstance(qs_or_model, models.query.QuerySet):
         if not is_evaluated(qs_or_model):
-            #TODO: not evaluating it does not mean that it has n+1 problem.
+            #NOTE: not evaluating it does not mean that it has n+1 problem.
             return False
         elif(len(qs_or_model)==0):
+            #NOTE: normally len() leads queryset to be evaluated but above if conditon guarantees that it will be evaluted when this code is executed, so no problem
             return True
         else:
+            #TODO: first item of the queryset may be fetched but it does not mean other items are fetched too. This code is problematic
             return not(False in [is_nested_field_cached(qs_or_model[0], field) for field in fields])
-     return not(False in [is_nested_field_cached(qs_or_model, field) for field in fields])
+    return not(False in [is_nested_field_cached(qs_or_model, field) for field in fields])
 
 
 def is_nested_field_cached(model_instance, field):
@@ -214,3 +180,21 @@ def patch_cursor():
     c.cursor().__class__.execute=execute
     c.cursor().__class__.callproc=callproc
     c.cursor().__class__.executemany=executemany
+
+
+
+"""
+import sys
+sys.path.insert(0, "../..")
+from auto_related.utils import *
+from testerapp.models import *
+from testerapp.serializers import *
+from django.db.models.fields.reverse_related import (
+    ForeignObjectRel, ManyToManyRel, ManyToOneRel, OneToOneRel,
+)
+from django.db.models.fields.related import (
+    RelatedField as DjangoRelatedField
+)
+from auto_related.tracer import *
+patch_cursor()
+"""
