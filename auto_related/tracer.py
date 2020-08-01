@@ -29,8 +29,6 @@ def select_and_prefetch(trace):
             prefetch=[f['accessor'] for f in trace if f['field'].related_model is not None]
             break
    
-    if len(select)!=0 or len(prefetch)!=0:
-        print('bakbi >' + str(trace), "__".join(select), "__".join(prefetch))
     return "__".join(select), "__".join(prefetch)
 
 
