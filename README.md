@@ -50,7 +50,7 @@ from rest_framework import status,generics
 class ParentList(generics.ListAPIView):
     serializer_class = SomeSerializer
     def get_queryset(self):
-        t=Tracer(StudentSerializer())
+        t=Tracer(SomeSerializer)
         traces=t.trace()
         s,p=optimized_queryset_given_trails(traces)
         return SomeSerializer.model.objects.select_related(*s)\
