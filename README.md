@@ -7,7 +7,7 @@ AutoRelated package automatically creates correct use of `select_related()`, `pr
 
 Note that a SerializerMethodField which causes n+1 problem cannot be solved by AutoRelated since inspecting what is happening in a method field is really hard. To solve it you can still pass extra arguments to select or prefetch_related in queryset attribute of class based views.
 
-### Requirements
+## Requirements
 
 AutoRelated is developed and tested against;
 
@@ -25,7 +25,7 @@ For development in addition to above:
 * Django Debug Toolbar
 
 
-### Installation
+## Installation
 For now only git clone will work.
 
 ## Usage
@@ -77,7 +77,7 @@ class ParentList(ViewMixinWithOnlyOptim, generics.ListAPIView):
     queryset=Parent.objects.all()
 ```
 
-### How It Works
+## How It Works
 
 First a util function `get_all_sources()` inspects a serializer deeply by iterating over all of its fields including fields of the nested serializers. Say that you have serializer like this;
 
@@ -101,7 +101,7 @@ get_all_sources(SomeSerializer)
 which is all attributes that this serializer will access when it is passed with a data. We somehow have to inspect those sources to decide what to prefetch.
 
 Then, the tracer object traces all these sources on model that this serializer is assigned to. For example some_other.attr source first visits some_other relational field and then attr integerfield of SomeOther model. Note that those fields has nothing to do with rest framework fields, they are django's field objects. Fields helps us to decide what to prefetch. For instance, If a field is a related or reverse related field then it could be said that  it should be prefetched. However there are two methods to do that in django which are `select_related` and `prefetch_related`. Fields classes helps to decide which is which. For example a onetoone field can be prefetched using `select_related` but we should use `prefetch_related` for manytomany fields or reverse related fields etc..
-### Development
+## Development
 
 Want to contribute? Great!
 
@@ -113,7 +113,7 @@ $ python manage.py runserver
 ```
 Django toolbar is installed in the project so that you can examine how many queries are executed and lots of other things as well for testing purposes. For instance you can go to `http://localhost:8080/test/course` and `http://localhost:8080/test/course/slow` to compare speed and query count difference between auto_related applied and not applied queries. Each url in the test project has its counter part `...url/slow` which does not use auto_related and only use `model.objects.all()` as queryset. 
 
-### Todos
+## Todos
 
  - Writing Tests
  - Performance improvements by caching some functions which are called with same parameters many times
