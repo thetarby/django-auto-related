@@ -26,8 +26,11 @@ For development in addition to above:
 
 
 ## Installation
-For now only git clone will work.
+To install it use
 
+```sh
+$ pip install auto-related
+```
 ## Usage
 
 If you have a serializer like this defined in your serializers.py file;
