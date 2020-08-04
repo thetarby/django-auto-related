@@ -39,7 +39,7 @@ class ParentList(CustomListView):
         return Parent.objects.select_related(*s).prefetch_related(*p).only(*t.build_only())
 
 
-class TeacherList(ViewMixin,CustomListView):
+class TeacherList(ViewMixinWithOnlyOptim,CustomListView):
     serializer_class = TeacherSerializer
     #extra prefetches caused by serializermethodfield can be set here. Mixin will populate the queryset for others.
     queryset=Teacher.objects.prefetch_related('teaches__student_set').all()

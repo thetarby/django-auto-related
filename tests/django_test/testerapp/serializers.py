@@ -11,6 +11,7 @@ class ChildChildSerializer(ModelSerializer):
         model = ChildChild
         fields = '__all__'
 
+
 class ChildSerializer(ModelSerializer):
     child=ChildChildSerializer()
     class Meta:
@@ -31,7 +32,6 @@ class ParentSerializer(ModelSerializer):
         fields = '__all__'
 
 
-
 class ChildChildSerializer2(ModelSerializer):
     parents=ChildSerializer(many=True)
     slug_related_parents=serializers.SlugRelatedField(
@@ -45,12 +45,10 @@ class ChildChildSerializer2(ModelSerializer):
         fields = '__all__'
 
 
-
 class CourseSerializer(ModelSerializer):
     class Meta:
         model = Course
         fields = '__all__'
-
 
 
 class TeacherSerializer(ModelSerializer):
@@ -79,6 +77,7 @@ class CourseSerializer2(ModelSerializer):
 class UserSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=200, source='user_name') 
 
+
 class CommentSerializer(serializers.Serializer):
     content = serializers.CharField(max_length=200)
     user= UserSerializer()
@@ -87,6 +86,7 @@ class CommentSerializer(serializers.Serializer):
 class SubSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=100)
     comments = CommentSerializer(many=True, source='comment_set')
+
 
 class BlogPostSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=100)

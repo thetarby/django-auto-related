@@ -18,8 +18,8 @@ from rest_framework.fields import SerializerMethodField
 def select_and_prefetch(trace):
     select=[]
     prefetch=[]
-    for i,field in enumerate(trace):
-        if isinstance(field['field'], OneToOneRel) or isinstance(field['field'], ForeignKey) or isinstance(field['field'], OneToOneField):
+    for field in trace:
+        if isinstance(field['field'], (OneToOneRel, ForeignKey, OneToOneField)):
             select.append(field['accessor'])
             continue
         elif field['field'].related_model is None:
@@ -70,12 +70,8 @@ class Tracer:
         Examines a serializer and trace all of its sources.
         Those trails are used to decide what to prefetch_related and what to select_related
     """
-    default_error_messages = {
-        'invalid': _('%(model)s instance with %(field)s %(value)r does not exist.')
-    }
-    description = _("Foreign Key (type determined by related field)")
-    
-    
+
+
     def __init__(self, serializer):
         self.serializer=serializer
 
@@ -223,3 +219,4 @@ def get_model_accessors(model):
             #attname do not work. Found it attname is like child_id whereas name is like child. so attname is do not work for relations
             res.append({'field':f, 'accessor':f.name}) 
     return res
+

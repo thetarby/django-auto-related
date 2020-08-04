@@ -130,14 +130,34 @@ def are_nested_fields_cached(qs_or_model, fields):
     if isinstance(qs_or_model, models.query.QuerySet):
         if not is_evaluated(qs_or_model):
             #NOTE: not evaluating it does not mean that it has n+1 problem.
-            return False
+            return [] # none of them is cached
         elif(len(qs_or_model)==0):
             #NOTE: normally len() leads queryset to be evaluated but above if conditon guarantees that it will be evaluted when this code is executed, so no problem
-            return True
+            return fields # all of them are cached
         else:
             #TODO: first item of the queryset may be fetched but it does not mean other items are fetched too. This code is problematic
             return not(False in [is_nested_field_cached(qs_or_model[0], field) for field in fields])
     return not(False in [is_nested_field_cached(qs_or_model, field) for field in fields])
+
+
+def nested_fields_not_cached(qs_or_model, fields):
+    """
+    qs_or_model: it could be either a queryset instance or a model instance
+    fields: list of strings representing sources to be accessed on qs_or_model such as ['field', 'related_field.field', ...]
+
+    returns: True if all fields are cached and no db hit is required to access sources and False otherwise 
+    """
+    if isinstance(qs_or_model, models.query.QuerySet):
+        if not is_evaluated(qs_or_model):
+            #NOTE: not evaluating it does not mean that it has n+1 problem.
+            return [] # none of them is cached
+        elif(len(qs_or_model)==0):
+            #NOTE: normally len() leads queryset to be evaluated but above if conditon guarantees that it will be evaluted when this code is executed, so no problem
+            return fields # all of them are cached
+        else:
+            #TODO: first item of the queryset may be fetched but it does not mean other items are fetched too. This code is problematic
+            pass
+    return [field for field in fields if is_nested_field_cached(qs_or_model, field)]
 
 
 def is_nested_field_cached(model_instance, field):
@@ -181,6 +201,24 @@ def patch_cursor():
     c.cursor().__class__.callproc=callproc
     c.cursor().__class__.executemany=executemany
 
+
+def patch_related_fields():
+    old=DjangoRelatedField.__getattribute__
+    old2=ForeignObjectRel.__getattribute__
+    fields=[]
+    def patched(*args, **kwargs):
+        fields.append(args[0])
+        return old(*args, **kwargs)
+    def patched2(*args, **kwargs):
+        fields.append(args[0])
+        return old2(*args, **kwargs)
+    DjangoRelatedField.__getattribute__=patched
+    ForeignObjectRel.__getattribute__=patched2
+    res=str([c.student_set.all()[0].pk for c in obj.teaches.all()])
+    DjangoRelatedField.__getattribute__=old
+    ForeignObjectRel.__getattribute__=old2
+    print(set([(f.name, f.model) for f in fields]))
+    return res
 
 
 """

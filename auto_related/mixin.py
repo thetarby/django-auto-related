@@ -28,3 +28,4 @@ class ViewMixinWithOnlyOptim:
         s,p=optimized_queryset_given_trails(traces)
         queryset=super().get_queryset()
         return queryset.select_related(*s).prefetch_related(*p).only(*t.build_only())
+
