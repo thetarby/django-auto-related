@@ -122,7 +122,8 @@ Django toolbar is installed in the project so that you can examine how many quer
  - Performance improvements by caching some functions which are called with same parameters many times
  - Examining queryset or model instances passed to serializers to check if they are cached and properly configured and if not optimize them automatically.
  - AutoRelated does not work with serializers which has SerializerMethodField which causes n+1 problem. That problem might be solved by overriding or patching queryset classes within method field. 
-
+ - Utilizing `values()` instead of `only()` when django model instance is not needed.
+ - To be able to use whole package as a debug tool which could warn for missing optimizations when DEBUG=True
 License
 ----
 
