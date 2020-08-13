@@ -19,4 +19,9 @@ urlpatterns=[
     path('course', CourseList.as_view()),
     path('course/<slug>', CourseList.as_view()),
 
+    path('simple-course', SimpleCourseList.as_view()),
+    path('simple-course/<slug>', SimpleCourseList.as_view()),
+
+    path('simple-teacher', SimpleTeacherList.as_view()),
+    path('simple-teacher/<slug>', SimpleTeacherList.as_view()),
 ]

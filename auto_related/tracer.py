@@ -7,8 +7,12 @@ from django.db.models.fields.related import (
 )
 from django.utils.translation import gettext_lazy as _
 from rest_framework.fields import SerializerMethodField
-
+from rest_framework.serializers import BaseSerializer, ListSerializer
+from rest_framework.relations import (
+    ManyRelatedField,
+)
 from functools import lru_cache
+from inspect import isclass
 
 import warnings
 
@@ -59,6 +63,7 @@ class Tracer:
 
     def __init__(self, serializer):
         self.serializer=serializer
+        self.is_values=self.values_optim()
 
 
     def trace(self):
@@ -124,6 +129,19 @@ class Tracer:
     def build_only(self):
         trails=self.eliminate_reverse()
         return [trail.get_as_source().replace('.','__') for trail in trails]
+
+
+    def values_optim(self):
+        serializer=self.serializer
+        serializer=serializer() if isclass(serializer) else serializer
+        fields=serializer.child.fields if isinstance(serializer, ListSerializer) else serializer.fields
+        
+        for key in fields:
+            field=fields[key]
+            if isinstance(field, (BaseSerializer, ListSerializer, ManyRelatedField)):
+                return False
+
+        return True
 
 
 class Trail:

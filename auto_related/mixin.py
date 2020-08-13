@@ -21,6 +21,7 @@ class ViewMixin:
         queryset=super().get_queryset()
         return queryset.select_related(*s).prefetch_related(*p)
 
+
 class ViewMixinWithOnlyOptim:
     def get_queryset(self):
         t=Tracer(self.get_serializer())
@@ -28,4 +29,17 @@ class ViewMixinWithOnlyOptim:
         s,p=optimized_queryset_given_trails(traces)
         queryset=super().get_queryset()
         return queryset.select_related(*s).prefetch_related(*p).only(*t.build_only())
+
+
+class ViewMixinWithOnlyAndValuesOptim:
+    def get_queryset(self):
+        t=Tracer(self.get_serializer())
+        traces=t.trace()
+        s,p=optimized_queryset_given_trails(traces)
+        queryset=super().get_queryset()
+        if t.is_values:
+            print('VALLLLLLLLLLLLLLLLLLLLLLLLLLLLALLALAALLAL')
+            return queryset.select_related(*s).prefetch_related(*p).values(*t.build_only())
+        else:
+            return queryset.select_related(*s).prefetch_related(*p).only(*t.build_only())
 

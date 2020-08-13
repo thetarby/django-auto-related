@@ -29,7 +29,7 @@ class CustomListView(generics.ListAPIView):
             return Response(self.get_serializer_class()(self.get_serializer_class().Meta.model.objects.all(),many=True).data)
         return generics.ListAPIView.get(self, request)
 
-class ParentList(CustomListView):
+class ParentList(ViewMixinWithOnlyAndValuesOptim ,CustomListView):
     serializer_class = ParentSerializer
     def get_queryset(self):
         t=Tracer(ParentSerializer())
@@ -39,7 +39,7 @@ class ParentList(CustomListView):
         return Parent.objects.select_related(*s).prefetch_related(*p).only(*t.build_only())
 
 
-class TeacherList(ViewMixinWithOnlyOptim,CustomListView):
+class TeacherList(ViewMixinWithOnlyAndValuesOptim,CustomListView):
     serializer_class = TeacherSerializer
     #extra prefetches caused by serializermethodfield can be set here. Mixin will populate the queryset for others.
     queryset=Teacher.objects.prefetch_related('teaches__student_set').all()
@@ -52,7 +52,18 @@ class TeacherList(ViewMixinWithOnlyOptim,CustomListView):
         return Teacher.objects.select_related(*s).prefetch_related(*p).only(*t.build_only())
     """
 
-class StudentList(CustomListView):
+
+class SimpleTeacherList(ViewMixinWithOnlyAndValuesOptim,CustomListView):
+    class _TeacherSerializer(ModelSerializer):
+        class Meta:
+            model = Teacher
+            fields = ['id','text']
+    serializer_class = _TeacherSerializer
+    #extra prefetches caused by serializermethodfield can be set here. Mixin will populate the queryset for others.
+    queryset=Teacher.objects.all()
+
+
+class StudentList(ViewMixinWithOnlyAndValuesOptim, CustomListView):
     serializer_class = StudentSerializer
     def get_queryset(self):
         t=Tracer(StudentSerializer())
@@ -62,12 +73,17 @@ class StudentList(CustomListView):
         return Student.objects.select_related(*s).prefetch_related(*p).only(*t.build_only())
 
 
-class CourseList(ViewMixin,CustomListView):
+class CourseList(ViewMixinWithOnlyAndValuesOptim, CustomListView):
     serializer_class = CourseSerializer2
     queryset=Course.objects.all()
 
 
-class ChildChildList(CustomListView):
+class SimpleCourseList(ViewMixinWithOnlyAndValuesOptim, CustomListView):
+    serializer_class = CourseSerializer
+    queryset=Course.objects.all()
+
+
+class ChildChildList(ViewMixinWithOnlyAndValuesOptim, CustomListView):
     serializer_class = ChildChildSerializer2
     def get_queryset(self):
         t=Tracer(ChildChildSerializer2())
