@@ -45,13 +45,34 @@ def get_all_sources(serializer, include_pk=False):
         #if it is SerializerMethodField
         if source == '*':
             continue
+        
+        # if it is a many related_field get child relation for below isintance checks to work since ManyRelatedField is not subclass of them they are useless if we dont get child_relation
+        # Child relation will have the same source so there is no problem there
+        if isinstance(field, ManyRelatedField):
+            field=field.child_relation
 
         #This is a special case. Normally source of a primarykey related field is not used while serializing but pk value is used
         #hence no need to prefetch related model when using primary key related field
         if isinstance(field, PrimaryKeyRelatedField) and include_pk==False:
             continue
+        
+        #HyperlinkedRelatedField uses pk only optimization like PrimaryKeyRelatedField if lookup_field is 'pk' which is its default
+        """
+        if (isinstance(field, HyperlinkedRelatedField)) and field.lookup_field=='pk' and include_pk==False:
+            continue
+        """
+
+        # Another special case
+        # HyperlinkedRelatedField uses pk only optimization like PrimaryKeyRelatedField if lookup_field is 'pk' which is its default
+        if isinstance(field, HyperlinkedRelatedField):
+            if field.lookup_field=='pk':
+                if include_pk==False:
+                    continue
+            else:
+                source+='.{}'.format(str(field.lookup_field))
 
         res.append(source)
+        #TODO: baseserializer does not have fields method so it does not work with a custom base serializer subclass
         if isinstance(field, (BaseSerializer)):
             recursing=field.child if isinstance(field, ListSerializer) else field
             res+=[source+'.'+each_source for each_source in get_all_sources(recursing, include_pk)]

@@ -87,24 +87,26 @@ class Tracer:
                 # NOTE: does not work with fields with source like 'get_xxx_display' eventhough django rest could handle them. 
                 # sources that includes get_xxx_display will still work since that field cannot be related. Hence not inluding 
                 # it in the trails will have no harm.
-                
+
                 # warn when one of the sources is not included
                 warnings.warn('auto-related: Source cannot be traced: {}. Hence it might not be fully optimized.'.format(source))
                 break
 
             if include_reverse==False and isinstance(field['field'], ForeignObjectRel):
                 break
+
             trace.append(field['field'])
             
             #TODO: does it support GenericForeignKeys ?
             if not(isinstance(field['field'], ForeignObjectRel) or isinstance(field['field'], DjangoRelatedField)):
                 # if it is not a related or reverse related field than trail is done. Source should finish here as well
-                #if it does not it should give attribute error. Maybe it should be checked to see possible errors
+                # if it does not it should give an attribute error anyway. Maybe it should be checked to see possible errors
                 break
             else:
                 fields=Trail.get_model_accessors(field['field'].related_model)
 
         return trace
+
 
     #same as trace method but this do not include reverse related fields. It is useful to decide what to pass to only() since
     #it does not support reverse relations
@@ -116,6 +118,7 @@ class Tracer:
             if len(t)==0: continue
             trails.append(Trail(t))
         return trails 
+
 
     #method that returns what to pass to only()
     def build_only(self):
@@ -154,7 +157,7 @@ class Trail:
     
 
     @staticmethod
-    @lru_cache(maxsize=10, typed=True) # Since this function will very likely be called more than once with the same model caching it makes sense.
+    @lru_cache(maxsize=20, typed=True) # Since this function will very likely be called more than once with the same model caching it makes sense.
     def get_model_accessors(model):
         """
             given django model instance it returns all of its fields with its accessor(just like trail object)
