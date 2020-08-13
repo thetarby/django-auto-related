@@ -48,14 +48,13 @@ def get_all_sources(serializer, include_pk=False):
 
         #This is a special case. Normally source of a primarykey related field is not used while serializing but pk value is used
         #hence no need to prefetch related model when using primary key related field
-        if isinstance(field,PrimaryKeyRelatedField) and include_pk==False:
+        if isinstance(field, PrimaryKeyRelatedField) and include_pk==False:
             continue
 
         res.append(source)
-        if isinstance(field, (BaseSerializer, RelatedField, ManyRelatedField)): # or '.' in field.source
-            if isinstance(field, BaseSerializer):
-                recursing=field.child if isinstance(field, ListSerializer) else field
-                res+=[source+'.'+each_source for each_source in get_all_sources(recursing, include_pk)]
+        if isinstance(field, (BaseSerializer)):
+            recursing=field.child if isinstance(field, ListSerializer) else field
+            res+=[source+'.'+each_source for each_source in get_all_sources(recursing, include_pk)]
 
     return res
 

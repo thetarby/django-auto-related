@@ -32,6 +32,13 @@ class ParentSerializer(ModelSerializer):
         fields = '__all__'
 
 
+class HyperLinkedParentSerializer(serializers.HyperlinkedModelSerializer):
+    hyperlinked_child = serializers.HyperlinkedRelatedField(many=True, view_name='parent-detail', read_only=True, source='child', lookup_field='text')
+    class Meta:
+        model = Parent
+        fields = '__all__'
+
+
 class ChildChildSerializer2(ModelSerializer):
     parents=ChildSerializer(many=True)
     slug_related_parents=serializers.SlugRelatedField(

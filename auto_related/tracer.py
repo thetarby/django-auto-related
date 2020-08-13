@@ -1,4 +1,4 @@
-from .utils import *
+from .utils import get_all_sources
 from django.db.models.fields.reverse_related import (
     ForeignObjectRel, ManyToManyRel, ManyToOneRel, OneToOneRel,
 )
@@ -8,6 +8,9 @@ from django.db.models.fields.related import (
 from django.utils.translation import gettext_lazy as _
 from rest_framework.fields import SerializerMethodField
 
+from functools import lru_cache
+
+import warnings
 
 #from django docs: 
 #You can refer to any ForeignKey or OneToOneField relation in the list of fields passed to select_related().
@@ -30,24 +33,6 @@ def select_and_prefetch(trace):
             break
    
     return "__".join(select), "__".join(prefetch)
-
-
-#same as below but without classes
-def optimized_queryset(serializer):
-    traces=[]
-    for s in get_all_sources(serializer):
-        traces.append(trace_source(s,serializer))
-
-    select=set()
-    prefetch=set()
-    for trace in traces:
-        s,p=select_and_prefetch(trace)
-        select.add(s)
-        prefetch.add(p)
-    
-    select.discard(''), prefetch.discard('')
-
-    return select, prefetch
 
 
 #given trails returned from Tracer.update method 
@@ -86,10 +71,11 @@ class Tracer:
     
     
     def trace_source(self, source, include_reverse=True):
+        """Traces a source like model.other_model.field and returns
+        """
         serializer=self.serializer
         model=serializer.Meta.model
-        #TODO: no need to call this func every time. save it somehow instead
-        fields=get_model_accessors(model)
+        fields=Trail.get_model_accessors(model)
 
         trace=[]
         source=source.split('.')
@@ -98,8 +84,14 @@ class Tracer:
             try:
                 field = [f for f in fields if f['accessor']==each_field_name][0]
             except IndexError:
-                raise Exception('No such field')
-            
+                # NOTE: does not work with fields with source like 'get_xxx_display' eventhough django rest could handle them. 
+                # sources that includes get_xxx_display will still work since that field cannot be related. Hence not inluding 
+                # it in the trails will have no harm.
+                
+                # warn when one of the sources is not included
+                warnings.warn('auto-related: Source cannot be traced: {}. Hence it might not be fully optimized.'.format(source))
+                break
+
             if include_reverse==False and isinstance(field['field'], ForeignObjectRel):
                 break
             trace.append(field['field'])
@@ -110,7 +102,7 @@ class Tracer:
                 #if it does not it should give attribute error. Maybe it should be checked to see possible errors
                 break
             else:
-                fields=get_model_accessors(field['field'].related_model)
+                fields=Trail.get_model_accessors(field['field'].related_model)
 
         return trace
 
@@ -153,12 +145,27 @@ class Trail:
     def get_accessor(field):
         if isinstance(field, SerializerMethodField):
             raise Exception('SerializerMethodField has no accessor')
+        #ForeignObjectRel instances have this attribute. returns default name like 'parent_set' or related_name if it is set 
         if hasattr(field, 'get_accessor_name'):
             return field.get_accessor_name()
         else:
             #NOTE: there is also field.attname. It might be more appropriate 
             return field.name
     
+
+    @staticmethod
+    @lru_cache(maxsize=10, typed=True) # Since this function will very likely be called more than once with the same model caching it makes sense.
+    def get_model_accessors(model):
+        """
+            given django model instance it returns all of its fields with its accessor(just like trail object)
+            including related and reverse related fields like;
+            [{'field':field_instance, 'accessor':'parent'}, {'field':field_instance, 'accessor':'child_set'}]
+        """
+        res=[]
+        for f in model._meta.get_fields():
+            res.append({'field':f, 'accessor':Trail.get_accessor(f)})
+        return res
+
 
     def __getitem__(self, key):
         if isinstance(key, slice):
@@ -179,7 +186,7 @@ class Trail:
 def trace_source(source, serializer):
     model=serializer.Meta.model
     #TODO: no need to call this func every time. use it in class and cache it somehow instead
-    fields=get_model_accessors(model)
+    fields=Trail.get_model_accessors(model)
 
     trace=[]
     source=source.split('.')
@@ -198,25 +205,24 @@ def trace_source(source, serializer):
             #if it does not it should give attribute error. Maybe it should be checked to see possible errors
             break
         else:
-            fields=get_model_accessors(field['field'].related_model)
+            fields=Trail.get_model_accessors(field['field'].related_model)
 
     return trace
 
 
-def get_model_accessors(model):
-    """
-        given django model instance it returns all of its fields with its accessor(just like trail object below)
-        including related and reverse related fields like;
-        [{'field':field_instance, 'accessor':'parent'}, {'field':field_instance, 'accessor':'child_set'}]
-    """
-    res=[]
-    for f in model._meta.get_fields():
-        #ForeignObjectRel instances have this attribute. returns default name like 'parent_set' or related_name if it is set 
-        if hasattr(f, 'get_accessor_name'):
-            res.append({'field':f, 'accessor':f.get_accessor_name()})
-        else:
-            #I am using f.name but django uses attname in its source code even though they look like the same thing 
-            #attname do not work. Found it attname is like child_id whereas name is like child. so attname is do not work for relations
-            res.append({'field':f, 'accessor':f.name}) 
-    return res
+#same as optimized_queryset_given_trails but without using classes Tracer, Trail
+def optimized_queryset(serializer):
+    traces=[]
+    for s in get_all_sources(serializer):
+        traces.append(trace_source(s,serializer))
 
+    select=set()
+    prefetch=set()
+    for trace in traces:
+        s,p=select_and_prefetch(trace)
+        select.add(s)
+        prefetch.add(p)
+    
+    select.discard(''), prefetch.discard('')
+
+    return select, prefetch
