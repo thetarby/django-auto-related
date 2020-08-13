@@ -13,7 +13,7 @@ from django.db.models.fields.reverse_related import (
 from django.db.models.fields.related import (
     RelatedField as DjangoRelatedField, ForeignKey, OneToOneField
 )
-
+import warnings
 
 """
 NOTE:
@@ -34,7 +34,11 @@ Since HyperlinkedIdentityField uses field of the object itself it may not need o
 def get_all_sources(serializer, include_pk=False):
     #if it is class get instance, if it is instance leave as is.
     serializer=serializer() if isclass(serializer) else serializer
-    fields=serializer.child.fields if isinstance(serializer, ListSerializer) else serializer.fields
+    try:
+        fields=serializer.child.fields if isinstance(serializer, ListSerializer) else serializer.fields
+    except AttributeError as e:
+        warnings.warn('Fields cannot be accessed hence sources cannot be fully accessed. There is probably a BaseSerializer in the fields.')
+        return []
     #fields=serializer._declared_fields this version uses class definition hence do not include source info of the fields
     
     res=[]
@@ -72,7 +76,6 @@ def get_all_sources(serializer, include_pk=False):
                 source+='.{}'.format(str(field.lookup_field))
 
         res.append(source)
-        #TODO: baseserializer does not have fields method so it does not work with a custom base serializer subclass
         if isinstance(field, (BaseSerializer)):
             recursing=field.child if isinstance(field, ListSerializer) else field
             res+=[source+'.'+each_source for each_source in get_all_sources(recursing, include_pk)]
