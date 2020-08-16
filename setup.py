@@ -11,7 +11,7 @@ README = (HERE / "README.md").read_text()
 setup(
   name = 'auto_related',        
   packages = ['auto_related'],   
-  version = '0.0.1',      
+  version = '0.0.2',      
   license='MIT',
   description = 'Optimize serializers automatically with select_related(), prefetch_related(), defer() and only()',   # Give a short description about your library
   long_description=README,

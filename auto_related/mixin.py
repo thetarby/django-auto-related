@@ -21,6 +21,7 @@ class ViewMixin:
         queryset=super().get_queryset()
         return queryset.select_related(*s).prefetch_related(*p)
 
+
 class ViewMixinWithOnlyOptim:
     def get_queryset(self):
         t=Tracer(self.get_serializer())
