@@ -38,7 +38,6 @@ class ViewMixinWithOnlyAndValuesOptim:
         s,p=optimized_queryset_given_trails(traces)
         queryset=super().get_queryset()
         if t.is_values:
-            print('VALLLLLLLLLLLLLLLLLLLLLLLLLLLLALLALAALLAL')
             return queryset.select_related(*s).prefetch_related(*p).values(*t.build_only())
         else:
             return queryset.select_related(*s).prefetch_related(*p).only(*t.build_only())
