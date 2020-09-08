@@ -78,7 +78,7 @@ class ParentList(ViewMixinWithOnlyOptim, generics.ListAPIView):
     queryset=Parent.objects.all()
 ```
 
-##### If you have a SerializerMethodField:
+#### If you have a SerializerMethodField:
 
 If you have a SerializerMethodField in your serializer which requires a queryset to be evaluated then it cannot be detected by auto-related automatically since inspecting a function is really hard. As a solution you can use a MethodField from auto-related.method_field which is almost same as SerializerMethodField except that it has an sources attribute which later could be used by auto-related to determine correct use of select_related(), prefetch_related() and only().
 
