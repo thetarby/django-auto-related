@@ -5,7 +5,7 @@ import sys
 sys.path.insert(0, "../..")
 from auto_related.utils import *
 from auto_related.mixin import *
-
+from auto_related.method_field import MethodField as SerializerMethodField
 class ChildChildSerializer(ModelSerializer):
     class Meta:
         model = ChildChild
@@ -27,6 +27,7 @@ class ParentSerializer(ModelSerializer):
         source='child.child'
      )
     string_related_child = serializers.StringRelatedField(source='child')
+    
     class Meta:
         model = Parent
         fields = '__all__'
@@ -76,6 +77,28 @@ class StudentSerializer(ModelSerializer):
 class CourseSerializer2(ModelSerializer):
     teached_by=TeacherSerializer(many=True, source='teacher_set')
     taken_by=StudentSerializer(many=True, source='student_set')
+    class Meta:
+        model = Course
+        fields = '__all__'
+
+
+# a super teacher is a teacher who has more than 10 students
+# lets implement it with a method field
+class IsSuperTeacherSerializer(ModelSerializer):
+    is_super_teacher= SerializerMethodField(sources=['teaches__student_set'])
+
+    def get_is_super_teacher(self, obj):
+        return sum([course.student_set.count() for course in obj.teaches.all()])
+
+
+    class Meta:
+        model = Teacher
+        fields = ['id', 'text', 'teaches', 'is_super_teacher']
+
+
+#this serializer shows that a method field could work event it is nested in another serializer 
+class CourseSerializerWithSuperTeacherSerializer(ModelSerializer):
+    teached_by=IsSuperTeacherSerializer(many=True, source='teacher_set')
     class Meta:
         model = Course
         fields = '__all__'

@@ -19,4 +19,9 @@ urlpatterns=[
     path('course', CourseList.as_view()),
     path('course/<slug>', CourseList.as_view()),
 
+    path('is-super-teacher', IsSuperTeacherList.as_view()),
+    path('is-super-teacher/<slug>', IsSuperTeacherList.as_view()),
+
+    path('is-super-course', CourseSerializerWithSuperTeacherSerializerList.as_view()),
+    path('is-super-course/<slug>', CourseSerializerWithSuperTeacherSerializerList.as_view()),
 ]

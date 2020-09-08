@@ -48,6 +48,8 @@ def get_all_sources(serializer, include_pk=False):
         
         #if it is SerializerMethodField
         if source == '*':
+            if hasattr(field, '_auto_related_sources'):
+                res+=field._auto_related_sources
             continue
         
         # if it is a many related_field get child relation for below isintance checks to work since ManyRelatedField is not subclass of them they are useless if we dont get child_relation

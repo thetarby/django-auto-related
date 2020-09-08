@@ -75,3 +75,13 @@ class ChildChildList(CustomListView):
         s,p=optimized_queryset_given_trails(traces)
 
         return ChildChild.objects.select_related(*s).prefetch_related(*p).only(*t.build_only())
+
+
+class IsSuperTeacherList(ViewMixin,CustomListView):
+    serializer_class = IsSuperTeacherSerializer
+    queryset=Teacher.objects.all()
+
+
+class CourseSerializerWithSuperTeacherSerializerList(ViewMixin,CustomListView):
+    serializer_class = CourseSerializerWithSuperTeacherSerializer
+    queryset=Course.objects.all()
