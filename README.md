@@ -5,8 +5,6 @@ AutoRelated package automatically creates correct use of `select_related()`, `pr
   - Build your query with the returned parameters
   - Your query is optimized
 
-Note that a SerializerMethodField which causes n+1 problem cannot be solved by AutoRelated since inspecting what is happening in a method field is really hard. To solve it you can still pass extra arguments to select or prefetch_related in queryset attribute of class based views.
-
 ## Requirements
 
 AutoRelated is developed and tested against;
@@ -37,7 +35,7 @@ If you have a serializer like this defined in your serializers.py file;
 ```python
 from restframework import serializers
 
-class SomeSerializer(serializer.Serializers):
+class SomeSerializer(serializer.ModelSerializer):
     field=SomeotherSerializer(many=True)
     .
     .
@@ -71,7 +69,7 @@ from rest_framework import status,generics
 #this mixin does not use only() and defer() optimization
 class ParentList(ViewMixin, generics.ListAPIView):
     serializer_class = SomeSerializer
-    # you can pass extra parameters here for SerializerMethodFields
+    # you can pass extra parameters here for SerializerMethodField if you do not use auto-related's MethodField
     queryset=Parent.objects.all() 
 
 #this mixin uses only() and defer() optimization
@@ -80,17 +78,54 @@ class ParentList(ViewMixinWithOnlyOptim, generics.ListAPIView):
     queryset=Parent.objects.all()
 ```
 
+##### If you have a SerializerMethodField:
+
+If you have a SerializerMethodField in your serializer which requires a queryset to be evaluated then it cannot be detected by auto-related automatically since inspecting a function is really hard. As a solution you can use a MethodField from auto-related.method_field which is almost same as SerializerMethodField except that it has an sources attribute which later could be used by auto-related to determine correct use of select_related(), prefetch_related() and only().
+
+
+```python
+from auto_related.method_field import MethodField
+class SomeSerializerWithMethodField(serializer.ModelSerializer):
+    field1=MethodField(many=True, sources=['related_object_set'])
+    field2=MethodField(many=True, sources=['child__related_object_set', 'related_object_set'])
+    
+    get_field1(self, obj):
+        # here related_object is accessed hence it sould be added to sources 
+        return obj.related_object_set.all().count()
+    
+    get_field2(self, obj):
+        # here related_object and child.related_object is accessed hence they sould be added to sources 
+        return obj.child.related_object_set.all().count() + obj.related_object_set.all().count()
+    
+    class Meta:
+        model=modelA
+
+class AnotherSerializer(serializer.ModelSerializer):
+    # You can use above serializer which includes a SerializerMethodField in another serializer safely.
+    # This way you do not need to deal with nested usage of SerilizerMethodField. 
+    # They are automatically prepended with necessary model and field names when used in another serializer.
+    # Also sources are automatically splitted into select_related and prefetch_related in a way 
+    # which minimizes database hits.
+    field=SomeSerializerWithMethodField(many=True, source='modelA')
+    
+    class Meta:
+        model=modelB
+```
+
+MethodField's implementation is almost same with the SerializerMethodField from rest-framework. In fact if you do not pass an sources argument to it, it is the same. Hence you can import like ```auto_related.method_field import MethodField as SerializerMethodField``` without changing your code, and you only set sources argument for the necessary fields. 
+
+
 ## How It Works
 
 First a util function `get_all_sources()` inspects a serializer deeply by iterating over all of its fields including fields of the nested serializers. Say that you have serializer like this;
 
 ```python
 
-class SomeSerializer(serializer.Serializers):
+class SomeSerializer(serializer.ModelSerializer):
     field=SomeOtherSerializer(many=True, source='some_other')
     text=CharField()
 
-class SomeOtherSerializer(serializer.Serializers):
+class SomeOtherSerializer(serializer.ModelSerializer):
     name=CharField()
     attr=IntegerField()     
 ```
@@ -119,9 +154,7 @@ Django toolbar is installed in the project so that you can examine how many quer
 ## Todos
 
  - Writing Tests
- - Performance improvements by caching some functions which are called with same parameters many times
  - Examining queryset or model instances passed to serializers to check if they are cached and properly configured and if not optimize them automatically.
- - AutoRelated does not work with serializers which has SerializerMethodField which causes n+1 problem. That problem might be solved by overriding or patching queryset classes within method field. 
  - Utilizing `values()` instead of `only()` when django model instance is not needed.
  - To be able to use whole package as a debug tool which could warn for missing optimizations when DEBUG=True
 License
