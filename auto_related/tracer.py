@@ -16,9 +16,12 @@ import warnings
 #You can refer to any ForeignKey or OneToOneField relation in the list of fields passed to select_related().
 #You can also refer to the reverse direction of a OneToOneField
 
-#given a trail(trace) it returns select_related and prefetch_related for that trail. It works for only one trail. 
-#It should be applied to all sources of a serializer and resulting sets should be added. 
 def select_and_prefetch(trace):
+    """
+    Given a trail(trace) such as ['model.related_field.field'] it returns select_related and 
+    prefetch_related for that trail. It works for only one trail so It should be applied to all 
+    sources of a serializer and resulting sets should be combined. 
+    """
     select=[]
     prefetch=[]
     for field in trace:
@@ -38,6 +41,10 @@ def select_and_prefetch(trace):
 #given trails returned from Tracer.update method 
 #returns two sets first of which is arguments for select_related and second one is arguments to pass to prefetch_related 
 def optimized_queryset_given_trails(trails):
+    """
+    given trails returned from Tracer.update method it returns two sets first of which 
+    is arguments for select_related and second one is arguments to pass to prefetch_related 
+    """
     select=set()
     prefetch=set()
     for trail in trails:
@@ -184,49 +191,3 @@ class Trail:
     
     def get_as_source(self, seperator='.'):
         return seperator.join([Trail.get_accessor(f) for f in self.fields])
-
-
-#this function does the same thing with Trace class without classes
-def trace_source(source, serializer):
-    model=serializer.Meta.model
-    #TODO: no need to call this func every time. use it in class and cache it somehow instead
-    fields=Trail.get_model_accessors(model)
-
-    trace=[]
-    source=source.split('.')
-    for each_field_name in source:
-        #find field by its name in fields
-        try:
-            field = [f for f in fields if f['accessor']==each_field_name][0]
-        except IndexError:
-            raise Exception('No such field: {}'.format(each_field_name))
-        
-        trace.append(field)
-        
-        #TODO: does it support GenericForeignKeys ?
-        if not(isinstance(field['field'], ForeignObjectRel) or isinstance(field['field'], DjangoRelatedField)):
-            # if it is not a related or reverse related field than trail is done. Source should finish here as well
-            #if it does not it should give attribute error. Maybe it should be checked to see possible errors
-            break
-        else:
-            fields=Trail.get_model_accessors(field['field'].related_model)
-
-    return trace
-
-
-#same as optimized_queryset_given_trails but without using classes Tracer, Trail
-def optimized_queryset(serializer):
-    traces=[]
-    for s in get_all_sources(serializer):
-        traces.append(trace_source(s,serializer))
-
-    select=set()
-    prefetch=set()
-    for trace in traces:
-        s,p=select_and_prefetch(trace)
-        select.add(s)
-        prefetch.add(p)
-    
-    select.discard(''), prefetch.discard('')
-
-    return select, prefetch
