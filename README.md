@@ -157,6 +157,7 @@ Django toolbar is installed in the project so that you can examine how many quer
  - Examining queryset or model instances passed to serializers to check if they are cached and properly configured and if not optimize them automatically.
  - Utilizing `values()` instead of `only()` when django model instance is not needed.
  - To be able to use whole package as a debug tool which could warn for missing optimizations when DEBUG=True
+
 License
 ----
 
