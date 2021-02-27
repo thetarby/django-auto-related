@@ -5,7 +5,9 @@ from rest_framework.relations import (
 )
 from rest_framework.serializers import BaseSerializer, ListSerializer
 from inspect import isclass
-import warnings
+
+import logging
+logger = logging.getLogger("django-auto-related")
 
 """
 NOTE:
@@ -26,7 +28,7 @@ def get_all_sources(serializer, include_pk=False):
     try:
         fields=serializer.child.fields if isinstance(serializer, ListSerializer) else serializer.fields
     except AttributeError as e:
-        warnings.warn('Fields cannot be accessed hence sources cannot be fully accessed. There is probably a BaseSerializer in the fields.')
+        logger.warning('Fields cannot be accessed hence sources cannot be fully accessed. There is probably a BaseSerializer in the fields.')
         return []
     #fields=serializer._declared_fields this version uses class definition hence do not include source info of the fields
     

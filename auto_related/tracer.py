@@ -10,7 +10,9 @@ from rest_framework.fields import SerializerMethodField
 
 from functools import lru_cache
 
-import warnings
+import logging
+
+logger = logging.getLogger("django-auto-related")
 
 #from django docs: 
 #You can refer to any ForeignKey or OneToOneField relation in the list of fields passed to select_related().
@@ -95,8 +97,8 @@ class Tracer:
                 # sources that includes get_xxx_display will still work since that field cannot be related. Hence not inluding 
                 # it in the trails will have no harm.
 
-                # warn when one of the sources is not included
-                warnings.warn('auto-related: Source cannot be traced: {}. Hence it might not be fully optimized.'.format(source))
+                # inform when one of the sources is not included
+                logger.info('Source cannot be traced: {}. Hence it might not be fully optimized.'.format(source))
                 break
 
             if include_reverse==False and isinstance(field['field'], ForeignObjectRel):

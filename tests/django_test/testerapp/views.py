@@ -11,7 +11,7 @@ from testerapp.models import *
 from testerapp.serializers import *
 
 import sys
-sys.path.insert(0,'C:\\Users\\heymannn\\Desktop\\components\\auto_related')
+sys.path.insert(0,'../..')
 
 from auto_related.tracer import *
 from auto_related.utils import *
